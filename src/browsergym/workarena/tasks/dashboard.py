@@ -38,8 +38,6 @@ def _get_config() -> dict | None:
     global _CACHED_INSTANCE_CONFIG
     if _CACHED_INSTANCE_CONFIG is None:
         _CACHED_INSTANCE_CONFIG = SNowInstance().report_filter_config
-    if _CACHED_INSTANCE_CONFIG is None:
-        return None
     return _CACHED_INSTANCE_CONFIG
 
 
