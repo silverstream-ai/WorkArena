@@ -539,10 +539,6 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
         logging.debug("Validating the response based on the question type")
         if self.config["question"].startswith("value"):
             logging.debug("The question is a value question")
-            # if more than one number is in the prompt, there is necessarily a false positive
-            if len(response_floats) > 1:
-                error_msg = "Incorrect answer. More than one number detected in the response."
-                return 0.0, True, error_msg, {"message": error_msg}
 
             logging.debug(
                 f"Extracting expected format and label from question for validation: {self.config['question']}"
@@ -558,7 +554,8 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
                     if point["label"] == label
                 ][0]
             )
-            if np.isclose(expected_value, response_floats[0]):
+            # Check if expected value is among the extracted numbers
+            if any(np.isclose(expected_value, f) for f in response_floats):
                 return 1.0, True, "Nice work, thank you!", {"message": "Correct answer."}
             else:
                 return 0.0, True, f"Incorrect answer.", {"message": "Incorrect answer."}
@@ -575,15 +572,11 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
             # Find all points with the target count value
             target_points = [point for point in chart_data if point["count"] == target_count]
 
-            # if more than one number is in the prompt, there is necessarily a false positive
-            if len(response_floats) > 1:
-                error_msg = "Incorrect answer. More than one number detected in the response."
-                return 0.0, True, error_msg, {"message": error_msg}
-
             # Check if any of these points are mentioned in the response
+            # and the target count is among the extracted numbers
             for point in target_points:
-                if point["label"].lower() in response.lower() and np.isclose(
-                    target_count, response_floats[0]
+                if point["label"].lower() in response.lower() and any(
+                    np.isclose(target_count, f) for f in response_floats
                 ):
                     return 1.0, True, "Nice work, thank you!", {"message": "Correct answer."}
 
@@ -605,13 +598,8 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
                 max_frequency_index = np.argmax(_counts)
                 target_count = -_vals[max_frequency_index]
 
-            # if more than one number is in the prompt, there is necessarily a false positive
-            if len(response_floats) > 1:
-                error_msg = "Incorrect answer. More than one number detected in the response."
-                return 0.0, True, error_msg, {"message": error_msg}
-
-            # Check if any of these points are mentioned in the response
-            if np.isclose(target_count, response_floats[0]):
+            # Check if expected value is among the extracted numbers
+            if any(np.isclose(target_count, f) for f in response_floats):
                 return 1.0, True, "Nice work, thank you!", {"message": "Correct answer."}
 
             # If no correct point is mentioned in the response
