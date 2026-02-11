@@ -1,4 +1,4 @@
-__version__ = "0.4.4+silverstream1"
+__version__ = "0.5.3+silverstream1"
 
 import inspect
 from logging import warning
