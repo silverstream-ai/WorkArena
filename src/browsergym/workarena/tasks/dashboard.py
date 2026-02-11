@@ -29,17 +29,6 @@ from .utils.utils import check_url_suffix_match
 #      - We currently don't support maps because they are clickable and would require a more evolved cheat function
 SUPPORTED_PLOT_TYPES = ["area", "bar", "column", "line", "pie", "spline"]
 
-# Fetching the instance config is expensive.
-# Cache it here on first use.
-_CACHED_INSTANCE_CONFIG: dict | None = None
-
-
-def _get_config() -> dict | None:
-    global _CACHED_INSTANCE_CONFIG
-    if _CACHED_INSTANCE_CONFIG is None:
-        _CACHED_INSTANCE_CONFIG = SNowInstance().report_filter_config
-    return _CACHED_INSTANCE_CONFIG
-
 
 class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
     """
@@ -312,14 +301,28 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
             """,
         ]
 
-    def setup_goal(self, page: playwright.sync_api.Page) -> Tuple[str | dict]:
-        super().setup_goal(page=page)
+    def _get_filter_config(self) -> str:
+        # Get report filter config
+        config = self.instance.report_filter_config
+        if config is None:
+            REPORT_DATE_FILTER = REPORT_TIME_FILTER = None
+        else:
+            REPORT_DATE_FILTER = config["report_date_filter"]
+            REPORT_TIME_FILTER = config["report_time_filter"]
+        del config
 
         # Check that the report filters are properly setup
         if self.report_date_filter is None or self.report_time_filter is None:
             raise RuntimeError(
                 "The report date and time filters are not set. Please run the install script to set them."
             )
+        return REPORT_DATE_FILTER, REPORT_TIME_FILTER
+
+    def setup_goal(self, page: playwright.sync_api.Page) -> Tuple[str | dict]:
+        super().setup_goal(page=page)
+
+        # Get the instance report filter config
+        REPORT_DATE_FILTER, REPORT_TIME_FILTER = self._get_filter_config()
 
         # Configure task
         # ... sample a configuration
@@ -641,6 +644,9 @@ class DashboardRetrievalTask(AbstractServiceNowTask, ABC):
             The types of questions to sample from (uniformely)
 
         """
+        # Get the instance report filter config
+        REPORT_DATE_FILTER, REPORT_TIME_FILTER = self._get_filter_config()
+
         # Check that the report filters are properly setup
         if self.report_date_filter is None or self.report_time_filter is None:
             raise RuntimeError(
